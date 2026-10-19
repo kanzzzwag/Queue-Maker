@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register · Defense Queue</title>
+  <script src="js/theme-init.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/register.js"></script>
+</head>
+<body>
+  <main class="auth">
+    <div class="auth-top">
+      <h1>Defense Queue</h1>
+      <button type="button" id="theme" class="btn ghost">Dark</button>
+    </div>
+    <form id="register-form" class="card form" novalidate>
+      <h2>Register</h2>
+      <label>Username
+        <input name="username" autocomplete="username" autocapitalize="none" spellcheck="false"
+               minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" required>
+        <small class="muted">3–20 letters, digits or _</small>
+      </label>
+      <label>Full name
+        <input name="display_name" autocomplete="name" maxlength="60" required>
+        <small class="muted">Shown in the queue</small>
+      </label>
+      <label>Password
+        <input name="password" type="password" autocomplete="new-password" minlength="6" required>
+      </label>
+      <label>Repeat password
+        <input name="password2" type="password" autocomplete="new-password" minlength="6" required>
+      </label>
+      <label>Group code
+        <input name="code" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+      </label>
+      <button type="submit" class="btn primary block">Create account</button>
+      <p class="muted center">Have an account? <a href="login.html">Log in</a></p>
+    </form>
+  </main>
+</body>
+</html>

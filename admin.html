@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin · Defense Queue</title>
+  <script src="js/theme-init.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/admin.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="index.html">Defense Queue</a>
+      <nav class="nav">
+        <span id="who" class="muted who"></span>
+        <a class="btn ghost" href="index.html">Queue</a>
+        <button type="button" id="theme" class="btn ghost">Dark</button>
+        <button type="button" id="logout" class="btn ghost">Log out</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1 class="page-title">Admin</h1>
+
+    <div id="admin-tabs" class="tabs tabs-4" role="tablist">
+      <button type="button" role="tab" data-tab="queue">Queue</button>
+      <button type="button" role="tab" data-tab="subjects">Subjects</button>
+      <button type="button" role="tab" data-tab="users">Users</button>
+      <button type="button" role="tab" data-tab="settings">Code</button>
+    </div>
+
+    <!-- Queue management: mark done / remove any entry -->
+    <section data-panel="queue">
+      <div id="queue"></div>
+    </section>
+
+    <!-- Weekly schedule -->
+    <section data-panel="subjects" hidden>
+      <form id="subject-form" class="card form" novalidate>
+        <h2 id="subject-form-title">Add subject</h2>
+        <label>Name
+          <input name="name" maxlength="100" required>
+        </label>
+        <div class="grid-3">
+          <label>Day
+            <select name="weekday"></select>
+          </label>
+          <label>Start
+            <input name="start" type="time" required>
+          </label>
+          <label>End
+            <input name="end" type="time" required>
+          </label>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn primary">Save</button>
+          <button type="button" id="subject-cancel" class="btn" hidden>Cancel</button>
+        </div>
+      </form>
+      <div id="subject-list"></div>
+    </section>
+
+    <!-- Users -->
+    <section data-panel="users" hidden>
+      <div class="card">
+        <h2>Users <span id="user-count" class="muted"></span></h2>
+        <ul id="user-list" class="rows"></ul>
+      </div>
+    </section>
+
+    <!-- Group code -->
+    <section data-panel="settings" hidden>
+      <form id="code-form" class="card form" novalidate>
+        <h2>Group code</h2>
+        <label>Code needed to register
+          <input name="code" maxlength="100" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+        </label>
+        <button type="submit" class="btn primary">Save</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

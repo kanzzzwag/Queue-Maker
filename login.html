@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in · Defense Queue</title>
+  <script src="js/theme-init.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/login.js"></script>
+</head>
+<body>
+  <main class="auth">
+    <div class="auth-top">
+      <h1>Defense Queue</h1>
+      <button type="button" id="theme" class="btn ghost">Dark</button>
+    </div>
+    <form id="login-form" class="card form" novalidate>
+      <h2>Log in</h2>
+      <label>Username
+        <input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+      </label>
+      <label>Password
+        <input name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="btn primary block">Log in</button>
+      <p class="muted center">No account? <a href="register.html">Register</a></p>
+    </form>
+  </main>
+</body>
+</html>
