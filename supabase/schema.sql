@@ -38,15 +38,18 @@ create table if not exists public.subjects (
 );
 
 -- Queue entries. A "slot" is (subject_id, slot_date).
+-- place = chosen position in the queue (1..number of users), unique per slot.
 create table if not exists public.entries (
   id         bigint generated always as identity primary key,
   subject_id bigint not null references public.subjects(id) on delete cascade,
   slot_date  date not null,
   user_id    uuid not null default auth.uid() references public.profiles(id) on delete cascade,
+  place      int not null constraint entries_place_check check (place >= 1),
   comment    text check (comment is null or char_length(comment) <= 200),
   done       boolean not null default false,
   created_at timestamptz not null default now(),
-  unique (subject_id, slot_date, user_id)   -- one entry per user per slot
+  unique (subject_id, slot_date, user_id),                              -- one entry per user per slot
+  constraint entries_slot_place_key unique (subject_id, slot_date, place) -- one user per place
 );
 create index if not exists entries_slot_idx on public.entries (slot_date, subject_id, created_at);
 
@@ -78,6 +81,14 @@ create or replace function public.app_week_start()
 returns date language sql stable set search_path = '' as $$
   select public.app_today() - (extract(isodow from public.app_today())::int - 1);
 $$;
+
+-- Number of registered users = highest place you can pick.
+create or replace function public.member_count()
+returns int language sql stable security definer set search_path = '' as $$
+  select count(*)::int from public.profiles;
+$$;
+revoke execute on function public.member_count() from public, anon;
+grant  execute on function public.member_count() to authenticated;
 
 
 -- ---------------------------------------------------------------------
@@ -146,24 +157,35 @@ create trigger on_auth_user_created
 
 
 -- ---------------------------------------------------------------------
--- Entry guard: server sets created_at; non-admins may only edit comment
+-- Entry guard: server sets created_at; non-admins may only edit comment and place;
+-- place must be 1..member_count
 -- ---------------------------------------------------------------------
 create or replace function public.entries_guard()
 returns trigger language plpgsql set search_path = '' as $$
+declare
+  v_max int;
 begin
   new.comment := nullif(btrim(new.comment), '');
   if tg_op = 'INSERT' then
-    new.created_at := now();              -- queue order cannot be faked
+    new.created_at := now();
     if not public.is_admin() then
       new.done := false;
     end if;
   else
     new.created_at := old.created_at;
-    if not public.is_admin() then         -- users can only change the comment
+    if not public.is_admin() then         -- users can only change comment and place
       new.subject_id := old.subject_id;
       new.slot_date  := old.slot_date;
       new.user_id    := old.user_id;
       new.done       := old.done;
+    end if;
+  end if;
+
+  -- Check the place range when it is set or changed.
+  if tg_op = 'INSERT' or new.place is distinct from old.place then
+    v_max := public.member_count();
+    if new.place is null or new.place < 1 or new.place > v_max then
+      raise exception 'Place must be from 1 to %.', v_max using errcode = '22023';
     end if;
   end if;
   return new;
@@ -247,7 +269,7 @@ drop policy if exists "entries: members read" on public.entries;
 create policy "entries: members read" on public.entries
   for select to authenticated using (public.is_member());
 
--- entries: join only for yourself, only today..end of next week,
+-- entries: join only for yourself, only on the day before the slot or the slot day,
 -- and only on the subject's weekday.
 drop policy if exists "entries: join" on public.entries;
 create policy "entries: join" on public.entries
@@ -255,7 +277,7 @@ create policy "entries: join" on public.entries
     public.is_member()
     and user_id = auth.uid()
     and slot_date >= public.app_today()
-    and slot_date <= public.app_week_start() + 13
+    and slot_date <= public.app_today() + 1
     and exists (
       select 1 from public.subjects s
       where s.id = subject_id

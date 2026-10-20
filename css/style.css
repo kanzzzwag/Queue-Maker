@@ -292,6 +292,8 @@ input::placeholder { color: var(--muted); }
 
 .inline-form { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
 .inline-form input { flex: 1 1 180px; }
+.place-pick { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--muted); }
+.place-pick select { width: auto; min-width: 72px; }
 .join { margin-top: 4px; }
 
 /* ===== Admin lists ===== */

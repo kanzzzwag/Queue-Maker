@@ -77,7 +77,8 @@ The anon key is meant to be public. The data is protected by RLS.
 ## Notes
 
 - Timezone is Asia/Almaty (UTC+5) for "today", closed days and cleanup.
-- Past days of the current week are visible but closed. Users can join from today until the end of next week. These rules are enforced in the database (RLS), not only in the page.
+- Past days of the current week are visible but closed. A slot can be joined only on the day before it or on the same day. Each person picks a free place (1 to the number of users) and can move to another free place later. These rules are enforced in the database (RLS + trigger), not only in the page.
+- Upgrading an existing database: run `supabase/migration-002-places.sql` once in the SQL Editor. Existing entries are kept and numbered in their current order.
 - The cleanup job runs every day at 00:00 Almaty time (19:00 UTC) and deletes entries from previous weeks. See jobs in **Integrations → Cron**.
 - Removing a user in Admin deletes their account and all their entries.
 - Usernames are case-insensitive (stored in lowercase).

@@ -53,8 +53,9 @@ export function toast(text, kind = 'error') {
 export function errMsg(err) {
   if (!err) return 'Something went wrong.';
   const m = err.message || String(err);
-  if (err.code === '23505') return 'Already in this queue.';
-  if (err.code === '42501' || /row-level security/i.test(m)) return 'Not allowed. The day may be closed.';
+  if (err.code === '23505') return /place/.test(m) ? 'Place taken. Pick another.' : 'Already in this queue.';
+  if (err.code === '22023') return m;   // "Place must be from 1 to N."
+  if (err.code === '42501' || /row-level security/i.test(m)) return 'Not allowed. Joining opens the day before.';
   if (/failed to fetch|networkerror|network request|load failed/i.test(m)) return 'Network error. Try again.';
   if (/invalid login credentials/i.test(m)) return 'Wrong username or password.';
   if (/already registered|already exists/i.test(m)) return 'Username taken.';
