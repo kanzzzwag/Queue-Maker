@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile · Defense Queue</title>
+  <script src="js/theme-init.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/profile.js"></script>
+</head>
+<body>
+  <header class="topbar" id="topbar"></header>
+  <main class="wrap">
+    <div id="profile"><p class="muted center">Loading...</p></div>
+
+    <!-- Own profile only -->
+    <div id="own" hidden>
+      <form id="edit-form" class="card form" novalidate>
+        <h2>Edit profile</h2>
+        <label>Name
+          <input name="display_name" maxlength="60" autocomplete="name" required>
+          <small id="name-hint" class="muted">You can change your name once every 7 days.</small>
+        </label>
+        <label>Bio
+          <textarea name="bio" rows="2" maxlength="160"></textarea>
+          <small class="muted"><span id="bio-count">0</span>/160</small>
+        </label>
+        <label>Favorite subject
+          <select name="fav"></select>
+        </label>
+        <label id="fav-text-wrap" hidden>Your subject
+          <input name="fav_text" maxlength="40">
+        </label>
+        <button type="submit" class="btn primary">Save</button>
+      </form>
+
+      <div class="card form">
+        <h2>Photo</h2>
+        <div class="btn-row">
+          <label class="btn">Upload photo
+            <input type="file" id="avatar-file" accept="image/*" class="visually-hidden">
+          </label>
+          <button type="button" id="avatar-remove" class="btn danger">Remove</button>
+        </div>
+        <small class="muted">Max 5 MB. It is resized to 256×256.</small>
+      </div>
+
+      <div class="card form">
+        <h2>Background</h2>
+        <div id="bg-presets" class="swatches" role="radiogroup" aria-label="Background"></div>
+        <div class="btn-row">
+          <label class="btn">Upload image
+            <input type="file" id="bg-file" accept="image/*" class="visually-hidden">
+          </label>
+          <button type="button" id="bg-remove" class="btn danger">Remove image</button>
+        </div>
+        <small class="muted">Max 5 MB. It is resized to 1200 px wide.</small>
+      </div>
+
+      <form id="email-form" class="card form" novalidate>
+        <h2>Email (optional)</h2>
+        <p id="email-status" class="muted small-text"></p>
+        <label>Email
+          <input name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false">
+        </label>
+        <div class="btn-row">
+          <button type="submit" class="btn primary">Send link</button>
+          <button type="button" id="email-remove" class="btn danger" hidden>Remove email</button>
+        </div>
+        <small class="muted">Used for password reset. Only you and the admin can see it. Confirm it to get 1000 points.</small>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

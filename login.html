@@ -23,7 +23,19 @@
         <input name="password" type="password" autocomplete="current-password" required>
       </label>
       <button type="submit" class="btn primary block">Log in</button>
+      <p class="muted center"><a href="#forgot" id="forgot-link">Forgot password?</a></p>
       <p class="muted center">No account? <a href="register.html">Register</a></p>
+    </form>
+
+    <form id="forgot-form" class="card form" novalidate hidden>
+      <h2>Reset password</h2>
+      <p class="muted small-text">Works if you added and confirmed an email in your profile. Otherwise ask the admin.</p>
+      <label>Username
+        <input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+      </label>
+      <button type="submit" class="btn primary block">Send link</button>
+      <p id="forgot-done" class="notice" hidden></p>
+      <p class="muted center"><a href="#" id="back-link">Back to log in</a></p>
     </form>
   </main>
 </body>

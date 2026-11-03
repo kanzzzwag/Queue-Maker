@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat · Defense Queue</title>
+  <script src="js/theme-init.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/chat.js"></script>
+</head>
+<body class="chat-body">
+  <header class="topbar" id="topbar"></header>
+  <main class="wrap chat-page">
+    <div id="chat-log" class="chat-log" aria-live="polite">
+      <div class="center"><button type="button" id="older" class="btn small" hidden>Load older</button></div>
+      <ol id="messages" class="messages"></ol>
+      <p id="chat-empty" class="muted center" hidden>No messages yet.</p>
+    </div>
+    <form id="chat-form" class="chat-form" novalidate>
+      <textarea name="body" rows="1" maxlength="500" placeholder="Message" aria-label="Message" required></textarea>
+      <button type="submit" class="btn primary">Send</button>
+    </form>
+  </main>
+</body>
+</html>

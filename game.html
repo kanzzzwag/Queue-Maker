@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Word · Defense Queue</title>
+  <script src="js/theme-init.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/game.js"></script>
+</head>
+<body>
+  <header class="topbar" id="topbar"></header>
+  <main class="wrap">
+    <h1 class="page-title">Daily Word</h1>
+    <p id="email-hint" class="notice" hidden>Add and confirm your email in <a href="profile.html">Profile</a> to get 1000 points.</p>
+
+    <div id="game-tabs" class="tabs tabs-3" role="tablist">
+      <button type="button" role="tab" data-tab="play">Today</button>
+      <button type="button" role="tab" data-tab="week">This week</button>
+      <button type="button" role="tab" data-tab="past">Past weeks</button>
+    </div>
+
+    <section data-panel="play">
+      <p class="muted small-text center">Guess the 5-letter word in 6 tries. A new word every day at 00:00.</p>
+      <div id="grid" class="word-grid" aria-label="Guesses"></div>
+      <p id="game-msg" class="game-msg" role="status" aria-live="polite"></p>
+      <div id="keyboard" class="keyboard" aria-label="Keyboard"></div>
+      <div class="legend muted small-text">
+        <span><i class="tile-mini t-c"></i> right place</span>
+        <span><i class="tile-mini t-p"></i> wrong place</span>
+        <span><i class="tile-mini t-a"></i> not in word</span>
+      </div>
+      <div class="card">
+        <h2>Today</h2>
+        <ul id="today-board" class="rows"></ul>
+      </div>
+    </section>
+
+    <section data-panel="week" hidden>
+      <div class="card">
+        <h2>This week</h2>
+        <p class="muted small-text">Top 3 with a confirmed email get 300, 200 and 100 points on Monday.</p>
+        <ol id="week-board" class="rows board"></ol>
+      </div>
+    </section>
+
+    <section data-panel="past" hidden>
+      <div id="past-weeks"></div>
+    </section>
+  </main>
+</body>
+</html>

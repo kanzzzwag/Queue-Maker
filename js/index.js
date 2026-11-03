@@ -1,11 +1,6 @@
 // Queue page.
-import { requireProfile, setupHeader, initThemeToggle } from './common.js';
+import { initPage } from './common.js';
 import { mountQueue } from './queue-view.js';
 
-initThemeToggle(document.getElementById('theme'));
-
-const profile = await requireProfile();
-if (profile) {
-  setupHeader(profile);
-  mountQueue(document.getElementById('queue'), { profile });
-}
+const ctx = await initPage('queue');
+if (ctx) mountQueue(document.getElementById('queue'), { profile: ctx.profile, flags: ctx.flags });

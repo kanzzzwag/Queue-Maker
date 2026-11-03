@@ -9,26 +9,19 @@
   <script type="module" src="js/admin.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="wrap topbar-inner">
-      <a class="brand" href="index.html">Defense Queue</a>
-      <nav class="nav">
-        <span id="who" class="muted who"></span>
-        <a class="btn ghost" href="index.html">Queue</a>
-        <button type="button" id="theme" class="btn ghost">Dark</button>
-        <button type="button" id="logout" class="btn ghost">Log out</button>
-      </nav>
-    </div>
-  </header>
+  <header class="topbar" id="topbar"></header>
 
   <main class="wrap">
     <h1 class="page-title">Admin</h1>
 
-    <div id="admin-tabs" class="tabs tabs-4" role="tablist">
+    <div id="admin-tabs" class="tabs tabs-wrap" role="tablist">
       <button type="button" role="tab" data-tab="queue">Queue</button>
       <button type="button" role="tab" data-tab="subjects">Subjects</button>
       <button type="button" role="tab" data-tab="users">Users</button>
-      <button type="button" role="tab" data-tab="settings">Code</button>
+      <button type="button" role="tab" data-tab="autojoin">Auto-join</button>
+      <button type="button" role="tab" data-tab="points">Points</button>
+      <button type="button" role="tab" data-tab="word">Daily Word</button>
+      <button type="button" role="tab" data-tab="settings">Settings</button>
     </div>
 
     <!-- Queue management: mark done / remove any entry -->
@@ -70,7 +63,73 @@
       </div>
     </section>
 
-    <!-- Group code -->
+    <!-- Auto-join -->
+    <section data-panel="autojoin" hidden>
+      <div class="card">
+        <h2>Auto-join</h2>
+        <p class="muted small-text">At 00:00 Almaty, when joining opens, you are added to checked subjects at the chosen place. If the place is taken, the subject is skipped.</p>
+        <ul id="aj-list" class="rows"></ul>
+        <div class="btn-row">
+          <button type="button" id="aj-save" class="btn primary">Save</button>
+          <button type="button" id="aj-run" class="btn">Run now</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Log</h2>
+        <ul id="aj-log" class="rows"></ul>
+      </div>
+    </section>
+
+    <!-- Points -->
+    <section data-panel="points" hidden>
+      <form id="points-form" class="card form" novalidate>
+        <h2>Adjust points</h2>
+        <label>User
+          <select name="user"></select>
+        </label>
+        <label>Amount
+          <input name="amount" type="number" step="1" inputmode="numeric" placeholder="100 or -100" required>
+        </label>
+        <label>Reason
+          <input name="reason" maxlength="200" required>
+        </label>
+        <button type="submit" class="btn primary">Apply</button>
+      </form>
+      <div class="card">
+        <h2>Balances</h2>
+        <ul id="points-users" class="rows"></ul>
+      </div>
+      <div class="card">
+        <h2>Recent movements</h2>
+        <ul id="points-ledger" class="rows"></ul>
+      </div>
+    </section>
+
+    <!-- Daily Word answers -->
+    <section data-panel="word" hidden>
+      <div id="word-warning" class="notice" hidden></div>
+      <form id="word-form" class="card form" novalidate>
+        <h2>Add answers</h2>
+        <label>Words (5 letters, separated by spaces or new lines)
+          <textarea name="words" rows="4" autocapitalize="none" spellcheck="false"></textarea>
+        </label>
+        <button type="submit" class="btn primary">Add</button>
+      </form>
+      <div class="card">
+        <h2>Upcoming <span id="word-count" class="muted"></span></h2>
+        <p class="muted small-text">One word per day, in this order. Today's word is hidden.</p>
+        <ul id="word-list" class="rows"></ul>
+      </div>
+      <div class="card">
+        <h2>Today</h2>
+        <div class="btn-row">
+          <button type="button" id="word-reveal" class="btn">Reveal</button>
+          <span id="word-today" class="reveal"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings: group code + trading switch -->
     <section data-panel="settings" hidden>
       <form id="code-form" class="card form" novalidate>
         <h2>Group code</h2>
@@ -79,6 +138,14 @@
         </label>
         <button type="submit" class="btn primary">Save</button>
       </form>
+      <div class="card form">
+        <h2>Trading</h2>
+        <label class="check">
+          <input type="checkbox" id="trade-enabled">
+          <span>Trading is on</span>
+        </label>
+        <p class="muted small-text">When off, the Trade page is hidden and all trade actions fail.</p>
+      </div>
     </section>
   </main>
 </body>
