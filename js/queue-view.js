@@ -2,11 +2,14 @@
 // Joining is open on the day before a slot and on the slot day.
 // Each entry has a chosen place (1..number of users); the queue is sorted by place.
 import {
-  sb, esc, toast, errMsg, busy,
+  sb, esc, toast, errMsg as baseErrMsg, busy, nameLink,
   todayStr, addDays, weekStart, isoWeekday, fmtDate, fmtTime, WEEKDAYS,
 } from './common.js';
 
-export function mountQueue(root, { profile, adminMode = false }) {
+// Permission errors on this page are almost always the join window.
+const errMsg = (e) => baseErrMsg(e, 'Not allowed. Joining opens the day before.');
+
+export function mountQueue(root, { profile, adminMode = false, flags = {} }) {
   const state = {
     today: todayStr(),
     week: 0,            // 0 = this week, 1 = next week
@@ -39,7 +42,7 @@ export function mountQueue(root, { profile, adminMode = false }) {
   async function loadEntries() {
     const from = firstDay();
     const { data, error } = await sb.from('entries')
-      .select('id, subject_id, slot_date, user_id, place, comment, done, created_at, profiles(display_name, username)')
+      .select('id, subject_id, slot_date, user_id, place, comment, done, created_at, profiles(*)')
       .gte('slot_date', from)
       .lte('slot_date', addDays(from, 13))
       .order('place');
@@ -91,13 +94,14 @@ export function mountQueue(root, { profile, adminMode = false }) {
 
   function entryHtml(e, open, taken) {
     const mine = e.user_id === profile.id;
-    const name = e.profiles?.display_name ?? 'Unknown';
+    const canSell = mine && open && !e.done && !adminMode && flags.trade_enabled;
     const editing = mine && open && state.editing === e.id;
 
     let actions = '';
     if (mine && open && !editing) {
       actions += `<button type="button" class="btn small" data-action="edit" data-id="${e.id}">Edit</button>
                   <button type="button" class="btn small" data-action="leave" data-id="${e.id}">Cancel</button>`;
+      if (canSell) actions += `<a class="btn small" href="trade.html?sell=${e.id}">Sell</a>`;
     }
     if (adminMode) {
       actions += `<button type="button" class="btn small" data-action="done" data-id="${e.id}" data-done="${e.done}">${e.done ? 'Undo' : 'Done'}</button>
@@ -120,7 +124,7 @@ export function mountQueue(root, { profile, adminMode = false }) {
         <span class="pos">${e.place}</span>
         <div class="entry-body">
           <div class="entry-name">
-            <span class="name">${esc(name)}</span>
+            ${nameLink(e.profiles)}
             ${mine ? '<span class="tag tag-you">You</span>' : ''}
             ${e.done ? '<span class="tag">Done</span>' : ''}
           </div>

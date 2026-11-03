@@ -51,6 +51,25 @@ Build a defense-queue website for my university study group.
 ## Pages
 - login.html, register.html, index.html (queue), admin.html. Or one page with views — your choice, keep it simple.
 
+## Extra features (added later, see README for setup)
+- Pages: chat.html, profile.html, trade.html, game.html, reset-password.html, verify-email.html.
+- Shared header/menu is rendered by `initPage()` in js/common.js (dropdown under "Menu" on narrow screens).
+- Auto-join (admin): `auto_join_rules`, `auto_join_log`, `run_auto_join()`, cron `auto-join`.
+- Chat: `messages`, anti-spam trigger, Realtime, cron `chat-cleanup`.
+- Email: own confirmation flow (Edge Function `email` + Brevo API, token hash, 24 h). Confirmed = row in `account_emails`; check with `public.email_verified(uid)`. Login by username via Edge Function `login`; reset via `forgot-password`; admin temp password via `admin-reset-password`.
+- Profiles: avatar/background in Storage buckets `avatars`/`backgrounds` (`{user_id}/...`), name change once per 7 days.
+- Points: `wallets` + `point_ledger`, changed only by `_points_add()`. Welcome bonus 1000 once after first confirmed email.
+- Trade: `trade_offers`, `trade_bids`, `trades`, RPCs only, switch `settings.trade_enabled`. `supabase/remove-trade.sql` removes it.
+- Daily Word: `word_dictionary`, `word_answer_queue`, `daily_words` (admin only), `game_plays`, `game_guesses`, `weekly_results`; `submit_guess()`, cron `word-pick` and `game-week`.
+
+## Database rules (live database with real data)
+- Never drop or recreate tables with data. Every change is a new `supabase/migration-NNN-*.sql`: one transaction, safe to re-run, does not touch existing entries.
+- Keep `supabase/schema.sql` = base + all migrations (final state for a fresh install).
+- Money, places and permissions are checked only on the server (RLS, security definer functions with `set search_path = ''`, Edge Functions). Revoke default grants on new tables (`revoke all ... from anon, authenticated`).
+- `entries_guard` allows user_id/place changes only when `app.trusted_op` is on AND `current_user` is not anon/authenticated (trade functions).
+- Secrets (service role, SMTP, Brevo) never go into the repo.
+- pg_cron runs in UTC: 19:00 UTC = 00:00 Asia/Almaty.
+
 ## Quality
 - Handle errors with short messages (wrong code, username taken, network error).
 - Escape user text (no XSS in comments/names).

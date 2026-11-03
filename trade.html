@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trade · Defense Queue</title>
+  <script src="js/theme-init.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/trade.js"></script>
+</head>
+<body>
+  <header class="topbar" id="topbar"></header>
+  <main class="wrap">
+    <h1 class="page-title">Trade</h1>
+    <p id="trade-off" class="notice" hidden>Trading is off.</p>
+    <p id="email-hint" class="notice" hidden>Add and confirm your email in <a href="profile.html">Profile</a> to get 1000 points.</p>
+
+    <!-- Opened from the queue: trade.html?sell=<entry id> -->
+    <form id="sell-form" class="card form" novalidate hidden>
+      <h2>Sell your place</h2>
+      <p id="sell-info"></p>
+      <label>Price (points)
+        <input name="price" type="number" min="1" max="1000000" step="1" inputmode="numeric" required>
+      </label>
+      <div class="btn-row">
+        <button type="submit" class="btn primary">Put up for sale</button>
+        <a class="btn" href="trade.html">Cancel</a>
+      </div>
+    </form>
+
+    <div id="trade-tabs" class="tabs tabs-wrap" role="tablist">
+      <button type="button" role="tab" data-tab="market">Market</button>
+      <button type="button" role="tab" data-tab="offers">My offers</button>
+      <button type="button" role="tab" data-tab="bids">My bids</button>
+      <button type="button" role="tab" data-tab="history">History</button>
+    </div>
+
+    <section data-panel="market"><div id="market"></div></section>
+    <section data-panel="offers" hidden><div id="my-offers"></div></section>
+    <section data-panel="bids" hidden><div id="my-bids"></div></section>
+    <section data-panel="history" hidden><div id="history"></div></section>
+  </main>
+</body>
+</html>

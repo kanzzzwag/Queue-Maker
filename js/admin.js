@@ -1,37 +1,31 @@
-// Admin page: queue management, subjects, users, group code.
+// Admin page: queue, subjects, users, auto-join, points, Daily Word, settings.
+// Each tab loads its data the first time it is opened.
 import {
-  sb, esc, toast, errMsg, busy, requireProfile, setupHeader, initThemeToggle,
-  WEEKDAYS, fmtTime,
+  sb, esc, toast, errMsg, busy, initPage, setupTabs, callFn, nameLink,
+  WEEKDAYS, fmtTime, fmtDate, fmtStamp, fmtPoints,
 } from './common.js';
 import { mountQueue } from './queue-view.js';
 
-initThemeToggle(document.getElementById('theme'));
+const ctx = await initPage('admin', { admin: true });
+if (ctx) init(ctx.profile);
 
-const profile = await requireProfile({ admin: true });
-if (profile) init();
-
-function init() {
-  setupHeader(profile);
-  setupTabs();
-  const queue = mountQueue(document.getElementById('queue'), { profile, adminMode: true });
-  setupSubjects(() => queue.reload());
-  setupUsers();
-  setupSettings();
-}
-
-// ---------- Section tabs (remembered in URL hash) ----------
-function setupTabs() {
-  const tabs = document.querySelectorAll('#admin-tabs button');
-  const show = (name) => {
-    tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
-    document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== name; });
+function init(profile) {
+  let queue;
+  const loaders = {
+    queue: () => { queue = mountQueue(document.getElementById('queue'), { profile, adminMode: true }); },
+    subjects: () => setupSubjects(() => queue?.reload()),
+    users: () => setupUsers(profile),
+    autojoin: () => setupAutoJoin(),
+    points: () => setupPoints(),
+    word: () => setupWord(),
+    settings: () => setupSettings(),
   };
-  tabs.forEach((b) => b.addEventListener('click', () => {
-    history.replaceState(null, '', `#${b.dataset.tab}`);
-    show(b.dataset.tab);
-  }));
-  const fromHash = location.hash.slice(1);
-  show([...tabs].some((b) => b.dataset.tab === fromHash) ? fromHash : 'queue');
+  const loaded = new Set();
+  setupTabs('admin-tabs', 'queue', (name) => {
+    if (loaded.has(name)) return;
+    loaded.add(name);
+    loaders[name]?.();
+  });
 }
 
 // ---------- Subjects ----------
@@ -144,39 +138,198 @@ function setupSubjects(onChange) {
 }
 
 // ---------- Users ----------
-function setupUsers() {
+function setupUsers(profile) {
   const list = document.getElementById('user-list');
   const count = document.getElementById('user-count');
   let users = [];
 
   async function load() {
-    const { data, error } = await sb.from('profiles').select('*').order('display_name');
+    const [{ data, error }, emails] = await Promise.all([
+      sb.from('profiles').select('*').order('display_name'),
+      sb.from('account_emails').select('user_id, email'),   // admin can read all emails
+    ]);
     if (error) return toast(errMsg(error));
+    const emailOf = new Map((emails.data || []).map((e) => [e.user_id, e.email]));
     users = data;
     count.textContent = `(${users.length})`;
     list.innerHTML = users.map((u) => `
       <li class="row-item">
         <div>
-          <strong>${esc(u.display_name)}</strong>
+          ${nameLink(u)}
           <span class="muted">@${esc(u.username)}</span>
           ${u.is_admin ? '<span class="tag">Admin</span>' : ''}
+          ${emailOf.has(u.id) ? `<span class="muted small-text">${esc(emailOf.get(u.id))}</span>` : '<span class="tag">No email</span>'}
         </div>
-        ${u.id === profile.id ? '' : `
-          <div class="entry-actions">
-            <button type="button" class="btn small danger" data-id="${u.id}">Remove</button>
-          </div>`}
+        <div class="entry-actions">
+          <button type="button" class="btn small" data-action="reset" data-id="${u.id}">Reset password</button>
+          ${u.id === profile.id ? '' : `<button type="button" class="btn small danger" data-action="remove" data-id="${u.id}">Remove</button>`}
+        </div>
       </li>`).join('');
   }
 
   list.addEventListener('click', async (ev) => {
-    const btn = ev.target.closest('button[data-id]');
+    const btn = ev.target.closest('button[data-action]');
     if (!btn) return;
     const u = users.find((x) => x.id === btn.dataset.id);
-    if (!u || !confirm(`Remove ${u.display_name}? Their account and entries will be deleted.`)) return;
-    await busy(btn, async () => {
-      const { error } = await sb.rpc('admin_delete_user', { target: u.id });
+    if (!u) return;
+
+    if (btn.dataset.action === 'reset') {
+      if (!confirm(`Set a temporary password for ${u.display_name}?`)) return;
+      await busy(btn, async () => {
+        const { data, error } = await callFn('admin-reset-password', { user_id: u.id });
+        if (error) return toast(error.message);
+        // Shown once, not stored anywhere.
+        prompt(`Temporary password for @${u.username}. Copy it now, it is shown once:`, data.password);
+      });
+    } else if (btn.dataset.action === 'remove') {
+      if (!confirm(`Remove ${u.display_name}? Their account and entries will be deleted.`)) return;
+      await busy(btn, async () => {
+        const { error } = await sb.rpc('admin_delete_user', { target: u.id });
+        if (error) return toast(errMsg(error));
+        toast('User removed.', 'ok');
+        await load();
+      });
+    }
+  });
+
+  load();
+}
+
+// ---------- Auto-join ----------
+const AJ_STATUS = { joined: 'Joined', place_taken: 'Place taken', already_in: 'Already in', error: 'Error' };
+
+function setupAutoJoin() {
+  const list = document.getElementById('aj-list');
+  const logEl = document.getElementById('aj-log');
+  let subjects = [];
+
+  async function load() {
+    const [subs, rules] = await Promise.all([
+      sb.from('subjects').select('*').order('weekday').order('start_time').order('name'),
+      sb.from('auto_join_rules').select('*'),
+    ]);
+    if (subs.error || rules.error) return toast(errMsg(subs.error || rules.error));
+    subjects = subs.data;
+    const rule = new Map(rules.data.map((r) => [r.subject_id, r]));
+    list.innerHTML = subjects.length ? subjects.map((s) => {
+      const r = rule.get(s.id);
+      return `
+        <li class="row-item" data-subject="${s.id}">
+          <label class="check">
+            <input type="checkbox" name="enabled"${r?.enabled ? ' checked' : ''}>
+            <span><strong>${esc(s.name)}</strong>
+              <span class="muted">${WEEKDAYS[s.weekday - 1].slice(0, 3)} ${esc(fmtTime(s.start_time))}</span></span>
+          </label>
+          <label class="place-pick">Place
+            <input name="place" type="number" min="1" step="1" inputmode="numeric" value="${r ? r.place : 3}">
+          </label>
+        </li>`;
+    }).join('') : '<p class="muted">No subjects yet.</p>';
+  }
+
+  async function loadLog() {
+    const { data, error } = await sb.from('auto_join_log').select('*')
+      .order('created_at', { ascending: false }).limit(30);
+    if (error) return toast(errMsg(error));
+    logEl.innerHTML = data.length ? data.map((l) => `
+      <li class="row-item">
+        <div>
+          <strong>${esc(l.subject_name || 'Deleted subject')}</strong>
+          <span class="muted">${esc(fmtDate(l.slot_date))} · place ${l.place ?? '—'}</span>
+        </div>
+        <div>
+          <span class="tag${l.status === 'joined' ? ' tag-ok' : l.status === 'already_in' ? '' : ' tag-bad'}">${AJ_STATUS[l.status]}</span>
+          <span class="muted small-text">${esc(fmtStamp(l.created_at, { alwaysDate: true }))}</span>
+        </div>
+        ${l.error ? `<p class="comment">${esc(l.error)}</p>` : ''}
+      </li>`).join('') : '<p class="muted">No runs yet.</p>';
+  }
+
+  document.getElementById('aj-save').addEventListener('click', async (ev) => {
+    const rows = [...list.querySelectorAll('li[data-subject]')].map((li) => ({
+      subject_id: Number(li.dataset.subject),
+      enabled: li.querySelector('[name=enabled]').checked,
+      place: Math.max(1, Math.floor(Number(li.querySelector('[name=place]').value) || 3)),
+    }));
+    if (!rows.length) return;
+    await busy(ev.currentTarget, async () => {
+      const { data: { user } } = await sb.auth.getUser();
+      const { error } = await sb.from('auto_join_rules')
+        .upsert(rows.map((r) => ({ ...r, user_id: user.id })), { onConflict: 'user_id,subject_id' });
       if (error) return toast(errMsg(error));
-      toast('User removed.', 'ok');
+      toast('Saved.', 'ok');
+    });
+  });
+
+  document.getElementById('aj-run').addEventListener('click', async (ev) => {
+    await busy(ev.currentTarget, async () => {
+      const { data, error } = await sb.rpc('run_auto_join');
+      if (error) return toast(errMsg(error));
+      toast(data.length ? `Done: ${data.map((l) => AJ_STATUS[l.status]).join(', ')}.` : 'Nothing to join for tomorrow.', 'ok');
+      await loadLog();
+    });
+  });
+
+  load();
+  loadLog();
+}
+
+// ---------- Points ----------
+function setupPoints() {
+  const form = document.getElementById('points-form');
+  const usersEl = document.getElementById('points-users');
+  const ledgerEl = document.getElementById('points-ledger');
+  const KIND = { welcome_bonus: 'Welcome', trade: 'Trade', game_reward: 'Daily Word', weekly_prize: 'Weekly prize', admin_adjust: 'Admin' };
+
+  async function load() {
+    const [profiles, wallets, ledger] = await Promise.all([
+      sb.from('profiles').select('id, username, display_name').order('display_name'),
+      sb.from('wallets').select('user_id, balance'),
+      sb.from('point_ledger')
+        .select('*, user:profiles!point_ledger_user_id_fkey(username, display_name)')
+        .order('id', { ascending: false }).limit(50),
+    ]);
+    const err = profiles.error || wallets.error || ledger.error;
+    if (err) return toast(errMsg(err));
+    const bal = new Map(wallets.data.map((w) => [w.user_id, w.balance]));
+
+    const selected = form.user.value;
+    form.user.innerHTML = profiles.data.map((p) =>
+      `<option value="${p.id}">${esc(p.display_name)} (@${esc(p.username)})</option>`).join('');
+    if (selected) form.user.value = selected;
+
+    usersEl.innerHTML = profiles.data.map((p) => `
+      <li class="row-item">
+        <div>${nameLink(p)} <span class="muted">@${esc(p.username)}</span></div>
+        <strong>${esc(fmtPoints(bal.get(p.id) ?? 0))}</strong>
+      </li>`).join('');
+
+    ledgerEl.innerHTML = ledger.data.length ? ledger.data.map((l) => `
+      <li class="row-item">
+        <div>
+          ${nameLink(l.user)}
+          <span class="tag">${KIND[l.kind] || esc(l.kind)}</span>
+          ${l.reason ? `<span class="muted small-text">${esc(l.reason)}</span>` : ''}
+        </div>
+        <div>
+          <strong class="${l.amount > 0 ? 'plus' : 'minus'}">${l.amount > 0 ? '+' : ''}${l.amount}</strong>
+          <span class="muted small-text">${esc(fmtStamp(l.created_at, { alwaysDate: true }))}</span>
+        </div>
+      </li>`).join('') : '<p class="muted">No movements yet.</p>';
+  }
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const amount = Math.trunc(Number(form.amount.value));
+    const reason = form.reason.value.trim();
+    if (!amount) return toast('Enter an amount (not 0).');
+    if (!reason) return toast('Enter a reason.');
+    await busy(form.querySelector('button[type=submit]'), async () => {
+      const { error } = await sb.rpc('admin_adjust_points', { target: form.user.value, amount, reason });
+      if (error) return toast(errMsg(error));
+      toast('Done.', 'ok');
+      form.amount.value = '';
+      form.reason.value = '';
       await load();
     });
   });
@@ -184,13 +337,77 @@ function setupUsers() {
   load();
 }
 
-// ---------- Group code ----------
+// ---------- Daily Word answers ----------
+function setupWord() {
+  const form = document.getElementById('word-form');
+  const list = document.getElementById('word-list');
+  const count = document.getElementById('word-count');
+  const warning = document.getElementById('word-warning');
+  const today = document.getElementById('word-today');
+
+  async function load() {
+    const { data, error } = await sb.rpc('admin_answer_queue');
+    if (error) return toast(errMsg(error));
+    count.textContent = `(${data.length})`;
+    warning.hidden = data.length >= 7;
+    warning.textContent = data.length
+      ? `Only ${data.length} word${data.length === 1 ? '' : 's'} left. Add more.`
+      : 'No words left. Random words from the dictionary will be used.';
+    list.innerHTML = data.length ? data.map((w, i) => `
+      <li class="row-item">
+        <div><span class="muted">${i + 1}.</span> <strong class="mono">${esc(w.word.toUpperCase())}</strong></div>
+        <button type="button" class="btn small danger" data-id="${w.id}">Delete</button>
+      </li>`).join('') : '<p class="muted">Empty.</p>';
+  }
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const words = form.words.value.toLowerCase().split(/[\s,;]+/).filter(Boolean);
+    if (!words.length) return toast('Enter some words.');
+    await busy(form.querySelector('button[type=submit]'), async () => {
+      const { data, error } = await sb.rpc('admin_add_answers', { p_words: words });
+      if (error) return toast(errMsg(error));
+      const bad = data.rejected || [];
+      toast(`Added ${data.added}.${bad.length ? ` Rejected: ${bad.join(', ')}` : ''}`, bad.length ? 'error' : 'ok');
+      form.words.value = bad.join('\n');
+      await load();
+    });
+  });
+
+  list.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('button[data-id]');
+    if (!btn) return;
+    await busy(btn, async () => {
+      const { error } = await sb.rpc('admin_remove_answer', { p_id: Number(btn.dataset.id) });
+      if (error) return toast(errMsg(error));
+      await load();
+    });
+  });
+
+  document.getElementById('word-reveal').addEventListener('click', async (ev) => {
+    if (!today.textContent && !confirm('Show today\'s answer?')) return;
+    if (today.textContent) { today.textContent = ''; return; }
+    await busy(ev.currentTarget, async () => {
+      const { data, error } = await sb.rpc('admin_reveal_today');
+      if (error) return toast(errMsg(error));
+      today.textContent = String(data).toUpperCase();
+    });
+  });
+
+  load();
+}
+
+// ---------- Settings: group code + trading ----------
 function setupSettings() {
   const form = document.getElementById('code-form');
+  const trade = document.getElementById('trade-enabled');
 
-  sb.from('settings').select('group_code').eq('id', 1).maybeSingle().then(({ data, error }) => {
+  sb.from('settings').select('*').eq('id', 1).maybeSingle().then(({ data, error }) => {
     if (error) return toast(errMsg(error));
-    if (data) form.code.value = data.group_code;
+    if (!data) return;
+    form.code.value = data.group_code;
+    trade.checked = !!data.trade_enabled;
+    trade.disabled = !('trade_enabled' in data);
   });
 
   form.addEventListener('submit', async (ev) => {
@@ -201,6 +418,16 @@ function setupSettings() {
       const { error } = await sb.from('settings').update({ group_code: code }).eq('id', 1);
       if (error) return toast(errMsg(error));
       toast('Code saved.', 'ok');
+    });
+  });
+
+  trade.addEventListener('change', async () => {
+    const value = trade.checked;
+    await busy(trade, async () => {
+      const { error } = await sb.from('settings').update({ trade_enabled: value }).eq('id', 1);
+      if (error) { trade.checked = !value; return toast(errMsg(error)); }
+      document.querySelector('[data-nav="trade"]')?.toggleAttribute('hidden', !value);
+      toast(value ? 'Trading is on.' : 'Trading is off.', 'ok');
     });
   });
 }
