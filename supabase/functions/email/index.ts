@@ -46,7 +46,10 @@ async function currentUser(req: Request) {
 }
 
 async function sendMail(to: string, subject: string, text: string, html: string) {
-  if (!BREVO_API_KEY || !MAIL_FROM) return false;
+  if (!BREVO_API_KEY || !MAIL_FROM) {
+    console.error('Mail not sent: secret BREVO_API_KEY or MAIL_FROM is not set.');
+    return false;
+  }
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json', accept: 'application/json' },

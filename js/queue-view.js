@@ -2,7 +2,7 @@
 // Joining is open on the day before a slot and on the slot day.
 // Each entry has a chosen place (1..number of users); the queue is sorted by place.
 import {
-  sb, esc, toast, errMsg as baseErrMsg, busy, nameLink,
+  sb, esc, toast, errMsg as baseErrMsg, busy, nameLink, avatarHtml,
   todayStr, addDays, weekStart, isoWeekday, fmtDate, fmtTime, WEEKDAYS,
 } from './common.js';
 
@@ -124,6 +124,7 @@ export function mountQueue(root, { profile, adminMode = false, flags = {} }) {
         <span class="pos">${e.place}</span>
         <div class="entry-body">
           <div class="entry-name">
+            ${avatarHtml(e.profiles, 24)}
             ${nameLink(e.profiles)}
             ${mine ? '<span class="tag tag-you">You</span>' : ''}
             ${e.done ? '<span class="tag">Done</span>' : ''}
