@@ -54,7 +54,10 @@ Build a defense-queue website for my university study group.
 ## Extra features (added later, see README for setup)
 - Pages: chat.html, profile.html, trade.html, game.html, reset-password.html, verify-email.html.
 - Shared header/menu is rendered by `initPage()` in js/common.js (dropdown under "Menu" on narrow screens).
-- Auto-join (admin): `auto_join_rules`, `auto_join_log`, `run_auto_join()`, cron `auto-join`.
+- Auto-join (admin): `auto_join_rules`, `auto_join_log`, `run_auto_join(p_force)`, cron `auto-join` every minute, each slot tried once (log), Run now = force.
+- Subjects: `open_days_before` (0–7) + `open_time` = when the queue opens (`join_is_open()` in the join RLS policy); `valid_from` / `valid_until` = which weeks a subject is used (`admin_end_subject`, `admin_change_subject_next_week`, cron `subjects-cleanup`). Never delete a running subject when the schedule changes: end it after this week.
+- Trade dot: `trade_seen` + `mark_trade_seen()` / `trade_unseen_count()`; header shows a red dot (`[data-dot]`).
+- Favicon: `favicon.svg` + `apple-touch-icon.png`, linked in every page.
 - Chat: `messages`, anti-spam trigger, Realtime, cron `chat-cleanup`.
 - Email: own confirmation flow (Edge Function `email` + Brevo API, token hash, 24 h). Confirmed = row in `account_emails`; check with `public.email_verified(uid)`. Login by username via Edge Function `login`; reset via `forgot-password`; admin temp password via `admin-reset-password`.
 - Profiles: avatar/background in Storage buckets `avatars`/`backgrounds` (`{user_id}/...`), name change once per 7 days.

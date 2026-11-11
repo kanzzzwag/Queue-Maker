@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin · Defense Queue</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <script src="js/theme-init.js"></script>
   <link rel="stylesheet" href="css/style.css">
   <script type="module" src="js/admin.js"></script>
@@ -47,6 +49,33 @@
             <input name="end" type="time" required>
           </label>
         </div>
+        <div class="grid-2">
+          <label>Queue opens
+            <select name="open_days">
+              <option value="0">Same day</option>
+              <option value="1">1 day before</option>
+              <option value="2">2 days before</option>
+              <option value="3">3 days before</option>
+              <option value="4">4 days before</option>
+              <option value="5">5 days before</option>
+              <option value="6">6 days before</option>
+              <option value="7">7 days before</option>
+            </select>
+          </label>
+          <label>At
+            <input name="open_time" type="time" value="00:00" required>
+          </label>
+        </div>
+        <label id="subject-starts">Starts
+          <select name="starts">
+            <option value="now">This week</option>
+            <option value="next">Next week</option>
+          </select>
+        </label>
+        <label id="subject-next-wrap" class="check" hidden>
+          <input type="checkbox" name="from_next">
+          <span>Apply from next week (this week stays as it is)</span>
+        </label>
         <div class="btn-row">
           <button type="submit" class="btn primary">Save</button>
           <button type="button" id="subject-cancel" class="btn" hidden>Cancel</button>
@@ -67,7 +96,7 @@
     <section data-panel="autojoin" hidden>
       <div class="card">
         <h2>Auto-join</h2>
-        <p class="muted small-text">At 00:00 Almaty, when joining opens, you are added to checked subjects at the chosen place. If the place is taken, the subject is skipped.</p>
+        <p class="muted small-text">The moment a checked subject's queue opens, you are added at the chosen place (checked every minute). If the place is taken, that slot is skipped. Run now tries all open queues again.</p>
         <ul id="aj-list" class="rows"></ul>
         <div class="btn-row">
           <button type="button" id="aj-save" class="btn primary">Save</button>

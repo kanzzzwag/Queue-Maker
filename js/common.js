@@ -124,6 +124,26 @@ export const fmtDate = (s, opts = { day: 'numeric', month: 'short' }) =>
 
 export const fmtTime = (t) => (t || '').slice(0, 5);
 
+// Current Almaty date-time as 'YYYY-MM-DDTHH:MM:SS' (sortable string).
+export function nowLocalStr() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const get = (t) => parts.find((p) => p.type === t).value;
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`;
+}
+
+// ---------- Subjects: schedule by week + open time (same rules as the database) ----------
+export const subjectActiveOn = (s, date) =>
+  s.weekday === isoWeekday(date)
+  && (!s.valid_from || date >= s.valid_from)
+  && (!s.valid_until || date <= s.valid_until);
+
+// Moment joining opens, 'YYYY-MM-DDTHH:MM:SS' in Almaty time.
+export const opensAt = (s, date) =>
+  `${addDays(date, -(s.open_days_before ?? 1))}T${(s.open_time || '00:00:00').padEnd(8, ':00').slice(0, 8)}`;
+
 // Timestamp -> "14:05" (today) or "3 Nov, 14:05", in Asia/Almaty.
 export function fmtStamp(iso, { alwaysDate = false } = {}) {
   const d = new Date(iso);
@@ -209,11 +229,11 @@ function renderHeader(active) {
     <div class="wrap wrap-wide topbar-inner">
       <a class="brand" href="index.html">Defense Queue</a>
       <span id="balance" class="chip" hidden></span>
-      <button type="button" id="menu-btn" class="btn ghost menu-btn" aria-expanded="false" aria-controls="nav">Menu</button>
+      <button type="button" id="menu-btn" class="btn ghost menu-btn" aria-expanded="false" aria-controls="nav">Menu<span class="dot" data-dot hidden></span></button>
       <nav id="nav" class="nav">
         ${NAV.map(([key, href, label]) => `
           <a class="nav-link" href="${href}" data-nav="${key}"${key === active ? ' aria-current="page"' : ''}
-             ${key === 'trade' || key === 'admin' ? 'hidden' : ''}>${label}</a>`).join('')}
+             ${key === 'trade' || key === 'admin' ? 'hidden' : ''}>${label}${key === 'trade' ? '<span class="dot" data-dot hidden></span>' : ''}</a>`).join('')}
         <button type="button" id="theme" class="nav-link nav-btn">Dark theme</button>
         <button type="button" id="logout" class="nav-link nav-btn">Log out</button>
       </nav>
@@ -260,7 +280,31 @@ export async function initPage(active, { admin = false, balance = false } = {}) 
   const me = document.querySelector('[data-nav="profile"]');
   if (me) me.href = profileUrl(profile.username);
   if (balance) showBalance(profile);
+  // Red dot on "Trade" when there is something new (the Trade page itself clears it).
+  if (flags.trade_enabled && active !== 'trade') watchTradeDot();
   return { profile, flags };
+}
+
+// ---------- "New in Trade" dot ----------
+export function setTradeDot(show) {
+  document.querySelectorAll('[data-dot]').forEach((d) => { d.hidden = !show; });
+  document.querySelector('[data-nav="trade"]')?.setAttribute('aria-label', show ? 'Trade (new)' : 'Trade');
+}
+
+async function refreshTradeDot() {
+  const { data, error } = await sb.rpc('trade_unseen_count');
+  if (!error) setTradeDot(data > 0);
+}
+
+function watchTradeDot() {
+  refreshTradeDot();
+  let t;
+  const later = () => { clearTimeout(t); t = setTimeout(refreshTradeDot, 500); };
+  sb.channel('trade-dot')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trade_offers' }, later)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trade_bids' }, later)
+    .subscribe();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshTradeDot(); });
 }
 
 // Disables a button while an async action runs.

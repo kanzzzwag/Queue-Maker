@@ -396,6 +396,7 @@ textarea {
 .tabs-3 { grid-template-columns: repeat(3, 1fr); }
 .tabs-4 { grid-template-columns: repeat(4, 1fr); }
 .check { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; font-weight: 400 !important; cursor: pointer; }
+.check[hidden] { display: none !important; }   /* .check above would beat [hidden] */
 .check input { width: 22px; min-height: 22px; height: 22px; flex: 0 0 auto; accent-color: var(--accent); }
 .small-text { font-size: 0.85rem; }
 .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: 0.08em; }
@@ -616,6 +617,18 @@ ul.rows.card { margin-top: 0; padding-top: 4px; padding-bottom: 4px; }
 .tile-mini { display: inline-block; width: 14px; height: 14px; border-radius: 3px; }
 .board .row-item > div:first-child { align-items: center; }
 .rank { display: inline-block; min-width: 22px; font-weight: 700; color: var(--muted); }
+
+/* ===== "New" dot (Trade) ===== */
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--danger);
+  flex: 0 0 auto;
+}
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
 /* ===== Toast ===== */
 .toast {
