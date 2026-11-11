@@ -31,6 +31,9 @@ drop function if exists public.expire_trades();
 drop function if exists public.entries_trade_expire();
 drop function if exists public._expire_offers_of_entry(bigint);
 drop function if exists public._trade_check();
+drop function if exists public.trade_unseen_count();   -- "new in Trade" dot (migration 008)
+drop function if exists public.mark_trade_seen();
+drop table if exists public.trade_seen;
 
 -- Tables (also removes them from Realtime)
 drop table if exists public.trades;

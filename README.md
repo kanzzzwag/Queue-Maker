@@ -17,6 +17,7 @@ register.html         register (needs group code)
 reset-password.html   new password (opened from the reset email)
 verify-email.html     email confirmation (opened from our own email)
 config.js             Supabase URL + publishable key (public)
+favicon.svg           site icon (apple-touch-icon.png = iPhone home screen icon)
 css/style.css         all styles
 js/                   page scripts (common.js = shared helpers and header)
 supabase/schema.sql                 full setup for a NEW project
@@ -38,6 +39,7 @@ Run these files **in this order** in **Supabase → SQL Editor → New query →
 3. `supabase/migration-005-email-profiles.sql`
 4. `supabase/migration-006-points-trade.sql`
 5. `supabase/migration-007-word-game.sql` (large: about 5000 dictionary words)
+6. `supabase/migration-008-open-time-schedule.sql` (open time per subject, schedule by week, Trade dot)
 
 Do **not** run `schema.sql` on the live database. It is for a brand new project only (base schema + all migrations in one file).
 
@@ -148,10 +150,12 @@ All run in UTC. 19:00 UTC = 00:00 Asia/Almaty.
 | Job | Schedule (UTC) | Does |
 |---|---|---|
 | `queue-cleanup` | `0 19 * * *` | deletes entries from past weeks |
-| `auto-join` | `0 19 * * *` | admin auto-join for tomorrow |
+| `auto-join` | `* * * * *` | every minute: admin auto-join when a subject's queue opens (once per slot) |
 | `word-pick` | `0 19 * * *` | fixes the new day's word |
 | `trade-expire` | `5 19 * * *` | expires stale offers and bids |
 | `chat-cleanup` | `15 19 * * *` | deletes messages older than 30 days |
+| `subjects-cleanup` | `20 19 * * *` | deletes subjects that ended before this week |
+| `cron-history-cleanup` | `30 19 * * *` | keeps `cron.job_run_details` to 7 days |
 | `game-week` | `0 19 * * 0` | Monday 00:00 Almaty: weekly results, prizes, badges |
 
 The order of jobs at 19:00 does not matter: they touch different rows.
@@ -190,20 +194,21 @@ The auto-join result is also in **Admin → Auto-join → Log**.
 - **Admin → Settings**: group code, and the **Trading** switch (off by default).
 - **Admin → Users**: email (if confirmed), **Reset password** (temporary password shown once), Remove.
 - **Admin → Points**: balances, add/remove points with a reason, last movements.
-- **Admin → Auto-join**: subjects + place; **Run now** to test.
+- **Admin → Auto-join**: subjects + place; **Run now** tries all open queues again.
+- **Admin → Subjects**: for each subject set when its queue opens (0–7 days before, at a time). **Starts: Next week** adds a subject only from next Monday. **End after this week** keeps this week and removes it from next week. **Edit → Apply from next week** changes it only from next Monday. **Delete now** removes it and its entries immediately.
 - **Admin → Daily Word**: add answer words, upcoming list, warning when fewer than 7, **Reveal** today's word.
 
 ---
 
 ## Rules (all enforced in the database or Edge Functions, not only in the page)
 
-- **Queue**: join opens at 00:00 Almaty the day before the slot. Pick a free place (1..number of users). Past days are closed.
-- **Auto-join**: at 00:00 the cron job tries to insert the admin at the chosen place. If the place is taken or anything fails, that subject is skipped and logged (`joined / place_taken / already_in / error`). It never takes another place and never touches other entries. Log kept 30 days.
+- **Queue**: each subject has its own open time (default: the day before at 00:00 Almaty). Pick a free place (1..number of users). Past days are closed. Subjects can start or end in a given week, so a new trimester never changes the current week.
+- **Auto-join**: every minute the cron job checks which queues just opened and tries ONCE per slot to insert the admin at the chosen place. If the place is taken or anything fails, that subject is skipped and logged (`joined / place_taken / already_in / error`). It never takes another place and never touches other entries. Log kept 30 days.
 - **Chat**: members only, 1–500 characters, max 1 message per 2 seconds and 20 per minute. Delete own (admin: any). No editing. Messages older than 30 days are deleted.
 - **Email**: optional, visible only to the owner and admin. Login always by username.
 - **Profile**: name change once per 7 days (admin: no limit). Bio 160, favorite subject (from the schedule or own text, 40). Photo 256×256 WebP, background 1200 px WebP, max 5 MB source.
 - **Points**: balance changes only through database functions and is logged in `point_ledger`. 1000 welcome points once, after the first confirmed email (never again, even after removing and adding an email). No points without a confirmed email.
-- **Trade**: only your own, not done, open entry; one open offer per entry; buyer and seller need confirmed emails. Buy now or make an offer; the seller accepts or declines. If the buyer is not in that queue, the place moves to them; if they are, the two swap places. Everything else on that entry expires.
+- **Trade**: only your own, not done, open entry; one open offer per entry; buyer and seller need confirmed emails. Buy now or make an offer; the seller accepts or declines. If the buyer is not in that queue, the place moves to them; if they are, the two swap places. Everything else on that entry expires. A red dot on "Trade" (and "Menu" on phones) shows new offers from others and new offers on your lots since you last opened Trade; opening Trade clears it on all your devices.
 - **Daily Word**: one word per day for everyone, 6 tries, checked on the server. 100/80/60/40/25/10 points (+20 for the first solver), paid only with a confirmed email. Weekly top 3 (with email) get 300/200/100 and a badge.
 
 ## Manual tests

@@ -1,13 +1,24 @@
 // Two-week queue view. Used on index.html (users) and admin.html (adminMode).
-// Joining is open on the day before a slot and on the slot day.
+// Each subject has its own open time (default: the day before at 00:00) and can
+// start or end in a given week (valid_from / valid_until).
 // Each entry has a chosen place (1..number of users); the queue is sorted by place.
 import {
   sb, esc, toast, errMsg as baseErrMsg, busy, nameLink, avatarHtml,
   todayStr, addDays, weekStart, isoWeekday, fmtDate, fmtTime, WEEKDAYS,
+  nowLocalStr, subjectActiveOn, opensAt,
 } from './common.js';
 
-// Permission errors on this page are almost always the join window.
-const errMsg = (e) => baseErrMsg(e, 'Not allowed. Joining opens the day before.');
+// Permission errors on this page are almost always the open time.
+const errMsg = (e) => baseErrMsg(e, 'Not allowed. This queue is not open yet.');
+
+// 'YYYY-MM-DDTHH:MM:SS' -> 'Tuesday', 'Tuesday 18:00' or 'today at 18:00'.
+function opensText(at) {
+  const [day, time] = at.split('T');
+  const hm = time.slice(0, 5);
+  if (day === todayStr()) return `today at ${hm}`;
+  const name = WEEKDAYS[isoWeekday(day) - 1];
+  return hm === '00:00' ? name : `${name} ${hm}`;
+}
 
 export function mountQueue(root, { profile, adminMode = false, flags = {} }) {
   const state = {
@@ -140,7 +151,10 @@ export function mountQueue(root, { profile, adminMode = false, flags = {} }) {
     const own = list.find((e) => e.user_id === profile.id);
     const taken = new Set(list.map((e) => e.place));
     const open = date >= state.today;                                  // edit / cancel allowed
-    const joinOpen = open && date <= addDays(state.today, 1);           // day before or same day
+    // Each subject has its own open time (checked again by the database).
+    const opens = opensAt(s, date);
+    const joinOpen = open && date <= addDays(firstDay(), 13) && nowLocalStr() >= opens;
+    if (open && !joinOpen && (!state.nextOpen || opens < state.nextOpen)) state.nextOpen = opens;
 
     let footer = '';
     if (!own && joinOpen) {
@@ -155,7 +169,7 @@ export function mountQueue(root, { profile, adminMode = false, flags = {} }) {
            </form>`
         : '<p class="empty">No free places.</p>';
     } else if (!own && open) {
-      footer = `<p class="empty">Opens ${WEEKDAYS[isoWeekday(addDays(date, -1)) - 1]}.</p>`;
+      footer = `<p class="empty">Opens ${esc(opensText(opens))}.</p>`;
     }
 
     return `
@@ -187,10 +201,11 @@ export function mountQueue(root, { profile, adminMode = false, flags = {} }) {
     const focusKey = document.activeElement?.dataset?.key;
 
     const start = addDays(firstDay(), state.week * 7);
+    state.nextOpen = null;   // earliest future open moment on screen (see timer below)
     let html = '';
     for (let i = 0; i < 7; i++) {
       const date = addDays(start, i);
-      const subjects = state.subjects.filter((s) => s.weekday === i + 1);
+      const subjects = state.subjects.filter((s) => subjectActiveOn(s, date));
       if (!subjects.length) continue;
       const isToday = date === state.today;
       const closed = date < state.today;
@@ -301,6 +316,13 @@ export function mountQueue(root, { profile, adminMode = false, flags = {} }) {
         break;
     }
   });
+
+  // ---------- Opening times ----------
+  // Every 15 s: a new day -> reload; a queue reached its open time -> redraw.
+  setInterval(() => {
+    if (todayStr() !== state.today) return reloadAll();
+    if (state.nextOpen && nowLocalStr() >= state.nextOpen) render();
+  }, 15000);
 
   // ---------- Live updates ----------
   let timer;

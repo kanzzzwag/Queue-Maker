@@ -2,7 +2,7 @@
 // Each tab loads its data the first time it is opened.
 import {
   sb, esc, toast, errMsg, busy, initPage, setupTabs, callFn, nameLink,
-  WEEKDAYS, fmtTime, fmtDate, fmtStamp, fmtPoints,
+  WEEKDAYS, fmtTime, fmtDate, fmtStamp, fmtPoints, todayStr, weekStart, addDays,
 } from './common.js';
 import { mountQueue } from './queue-view.js';
 
@@ -29,21 +29,31 @@ function init(profile) {
 }
 
 // ---------- Subjects ----------
+// A subject can start next week (valid_from) or end after this week (valid_until),
+// so a new trimester's schedule never changes the current week.
 function setupSubjects(onChange) {
   const form = document.getElementById('subject-form');
   const list = document.getElementById('subject-list');
   const title = document.getElementById('subject-form-title');
   const cancelBtn = document.getElementById('subject-cancel');
+  const startsWrap = document.getElementById('subject-starts');
+  const nextWrap = document.getElementById('subject-next-wrap');
   let subjects = [];
   let editId = null;
 
   form.weekday.innerHTML = WEEKDAYS.map((d, i) => `<option value="${i + 1}">${d}</option>`).join('');
+  const thisMonday = () => weekStart(todayStr());
+  const nextMonday = () => addDays(thisMonday(), 7);
 
   function resetForm() {
     editId = null;
     form.reset();
+    form.open_days.value = '1';
+    form.open_time.value = '00:00';
     title.textContent = 'Add subject';
     cancelBtn.hidden = true;
+    startsWrap.hidden = false;
+    nextWrap.hidden = true;
   }
 
   async function load() {
@@ -54,6 +64,12 @@ function setupSubjects(onChange) {
     render();
   }
 
+  const opensLabel = (s) => {
+    const d = s.open_days_before ?? 1;
+    const when = d === 0 ? 'same day' : d === 1 ? '1 day before' : `${d} days before`;
+    return `opens ${when}, ${fmtTime(s.open_time || '00:00')}`;
+  };
+
   function render() {
     if (!subjects.length) { list.innerHTML = '<p class="muted">No subjects yet.</p>'; return; }
     list.innerHTML = WEEKDAYS.map((day, i) => {
@@ -63,17 +79,25 @@ function setupSubjects(onChange) {
         <section class="card">
           <h3>${day}</h3>
           <ul class="rows">
-            ${items.map((s) => `
-              <li class="row-item">
+            ${items.map((s) => {
+              const future = s.valid_from && s.valid_from > todayStr();
+              const ending = !!s.valid_until;
+              return `
+              <li class="row-item${ending ? ' closed-row' : ''}">
                 <div>
                   <strong>${esc(s.name)}</strong>
                   <span class="muted">${esc(fmtTime(s.start_time))}–${esc(fmtTime(s.end_time))}</span>
+                  <span class="muted small-text">${esc(opensLabel(s))}</span>
+                  ${future ? `<span class="tag tag-ok">From ${esc(fmtDate(s.valid_from))}</span>` : ''}
+                  ${ending ? `<span class="tag tag-bad">Until ${esc(fmtDate(s.valid_until))}</span>` : ''}
                 </div>
                 <div class="entry-actions">
                   <button type="button" class="btn small" data-action="edit" data-id="${s.id}">Edit</button>
-                  <button type="button" class="btn small danger" data-action="delete" data-id="${s.id}">Delete</button>
+                  ${ending ? '' : `<button type="button" class="btn small" data-action="end" data-id="${s.id}">End after this week</button>`}
+                  <button type="button" class="btn small danger" data-action="delete" data-id="${s.id}">Delete now</button>
                 </div>
-              </li>`).join('')}
+              </li>`;
+            }).join('')}
           </ul>
         </section>`;
     }).join('');
@@ -91,12 +115,27 @@ function setupSubjects(onChange) {
       form.weekday.value = String(s.weekday);
       form.start.value = fmtTime(s.start_time);
       form.end.value = fmtTime(s.end_time);
+      form.open_days.value = String(s.open_days_before ?? 1);
+      form.open_time.value = fmtTime(s.open_time || '00:00');
+      form.from_next.checked = false;
       title.textContent = 'Edit subject';
       cancelBtn.hidden = false;
+      startsWrap.hidden = true;
+      // "Apply from next week" only makes sense for a subject that is already running.
+      nextWrap.hidden = !!(s.valid_from && s.valid_from >= nextMonday()) || !!s.valid_until;
       form.scrollIntoView({ behavior: 'smooth', block: 'start' });
       form.name.focus({ preventScroll: true });
+    } else if (btn.dataset.action === 'end') {
+      if (!confirm(`End "${s.name}" after this week? This week's queue stays; it disappears from next week.`)) return;
+      await busy(btn, async () => {
+        const { error } = await sb.rpc('admin_end_subject', { p_id: s.id });
+        if (error) return toast(errMsg(error));
+        toast('Ends after this week.', 'ok');
+        await load();
+        onChange();
+      });
     } else if (btn.dataset.action === 'delete') {
-      if (!confirm(`Delete "${s.name}"? Its queue entries will be deleted too.`)) return;
+      if (!confirm(`Delete "${s.name}" now? Its queue entries (also this week) will be deleted too.`)) return;
       await busy(btn, async () => {
         const { error } = await sb.from('subjects').delete().eq('id', s.id);
         if (error) return toast(errMsg(error));
@@ -117,17 +156,28 @@ function setupSubjects(onChange) {
       weekday: Number(form.weekday.value),
       start_time: form.start.value,
       end_time: form.end.value,
+      open_days_before: Number(form.open_days.value),
+      open_time: form.open_time.value || '00:00',
     };
     if (!row.name) return toast('Enter a name.');
     if (!row.start_time || !row.end_time) return toast('Enter start and end time.');
     if (row.end_time <= row.start_time) return toast('End must be after start.');
 
     await busy(form.querySelector('button[type=submit]'), async () => {
-      const { error } = editId
-        ? await sb.from('subjects').update(row).eq('id', editId)
-        : await sb.from('subjects').insert(row);
+      let error;
+      if (editId && form.from_next.checked && !nextWrap.hidden) {
+        ({ error } = await sb.rpc('admin_change_subject_next_week', {
+          p_id: editId, p_name: row.name, p_weekday: row.weekday, p_start: row.start_time,
+          p_end: row.end_time, p_open_days: row.open_days_before, p_open_time: row.open_time,
+        }));
+      } else if (editId) {
+        ({ error } = await sb.from('subjects').update(row).eq('id', editId));
+      } else {
+        if (form.starts.value === 'next') row.valid_from = nextMonday();
+        ({ error } = await sb.from('subjects').insert(row));
+      }
       if (error) return toast(errMsg(error));
-      toast(editId ? 'Saved.' : 'Added.', 'ok');
+      toast(editId ? 'Saved.' : row.valid_from ? 'Added from next week.' : 'Added.', 'ok');
       resetForm();
       await load();
       onChange();
@@ -263,9 +313,9 @@ function setupAutoJoin() {
 
   document.getElementById('aj-run').addEventListener('click', async (ev) => {
     await busy(ev.currentTarget, async () => {
-      const { data, error } = await sb.rpc('run_auto_join');
+      const { data, error } = await sb.rpc('run_auto_join', { p_force: true });
       if (error) return toast(errMsg(error));
-      toast(data.length ? `Done: ${data.map((l) => AJ_STATUS[l.status]).join(', ')}.` : 'Nothing to join for tomorrow.', 'ok');
+      toast(data.length ? `Done: ${data.map((l) => AJ_STATUS[l.status]).join(', ')}.` : 'No open queue to join.', 'ok');
       await loadLog();
     });
   });

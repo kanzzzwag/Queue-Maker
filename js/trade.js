@@ -170,7 +170,10 @@ async function init(me, flags) {
   }
 
   const loaders = { market: loadMarket, offers: loadOffers, bids: loadBids, history: loadHistory };
-  const reload = () => { loaders[tab](); showBalance(me); };
+  // The user is looking at Trade: everything up to now counts as seen (clears the red dot).
+  const markSeen = () => { if (document.visibilityState === 'visible') sb.rpc('mark_trade_seen').then(() => {}); };
+  const reload = () => { loaders[tab](); showBalance(me); markSeen(); };
+  markSeen();
 
   setupTabs('trade-tabs', 'market', (name) => { tab = name; loaders[name](); });
 
