@@ -666,3 +666,95 @@ ul.rows.card { margin-top: 0; padding-top: 4px; padding-bottom: 4px; }
 @media (prefers-reduced-motion: reduce) {
   .toast { transition: none; }
 }
+
+/* ===== Grade calculator (calc.html) ===== */
+/* Amber for "passed, no scholarship". Other statuses reuse --ok / --accent / --danger. */
+:root { --warn: #8a5a00; --warn-soft: #fbf0d9; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --warn: #e0b45c; --warn-soft: #3a2f17; }
+}
+:root[data-theme="dark"] { --warn: #e0b45c; --warn-soft: #3a2f17; }
+
+.calc-head { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.calc-name { font-weight: 600; }
+.calc-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.calc-fields label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 0.875rem; }
+.calc-fields input[aria-invalid] { border-color: var(--danger); }
+.calc-error { color: var(--danger); font-size: 0.875rem; margin: 8px 0 0; }
+.calc-result { margin-top: 12px; }
+.calc-result p { margin: 0 0 8px; }
+.calc-actions { margin-bottom: 16px; }
+.calc-legend ul { margin: 8px 0 0; padding-left: 20px; }
+.calc-legend li { margin-bottom: 4px; }
+
+/* Status label: soft background + strong text, readable in both themes */
+.calc-status {
+  display: inline-block;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.calc-status.st-scholarship { background: var(--ok-soft); color: var(--ok); }
+.calc-status.st-passed      { background: var(--warn-soft); color: var(--warn); }
+.calc-status.st-retake,
+.calc-status.st-noadmission { background: var(--danger-soft); color: var(--danger); }
+.calc-st-text { font-weight: 600; }
+.calc-st-text.st-scholarship { color: var(--ok); }
+.calc-st-text.st-passed { color: var(--warn); }
+.calc-st-text.st-retake,
+.calc-st-text.st-noadmission { color: var(--danger); }
+.calc-good { color: var(--ok); font-weight: 600; }
+.calc-bad { color: var(--danger); font-weight: 600; }
+
+.calc-total { font-size: 1.05rem; }
+.calc-needed { list-style: none; margin: 0 0 12px; padding: 0; }
+.calc-needed li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+.calc-needed li:first-child { border-top: 0; }
+
+/* Total bar 0-100: dark part = regs, light part = Final, marks at 50 and 70 */
+.calc-bar {
+  position: relative;
+  height: 12px;
+  margin: 8px 0 26px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.calc-bar-base,
+.calc-bar-final { position: absolute; top: 0; bottom: 0; left: 0; }
+.calc-bar-base { background: var(--accent); border-radius: 999px 0 0 999px; }
+.calc-bar-final { background: var(--accent); opacity: 0.45; }
+.calc-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); }
+.calc-mark i {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* "What if" slider (the global input rule would give it a box, so reset it) */
+.calc-whatif { border-top: 1px solid var(--border); padding-top: 10px; }
+.calc-whatif label { display: flex; flex-direction: column; gap: 4px; }
+.calc-whatif input[type="range"] {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--accent);
+}
+
+@media (max-width: 420px) {
+  /* Narrow phones: Final goes on its own row */
+  .calc-fields { grid-template-columns: 1fr 1fr; }
+  .calc-fields label:last-child { grid-column: 1 / -1; }
+}

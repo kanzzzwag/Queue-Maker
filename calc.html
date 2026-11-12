@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grade Calculator · Defense Queue</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <script src="js/theme-init.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/calc.js"></script>
+</head>
+<body>
+  <header class="topbar" id="topbar"></header>
+  <main class="wrap">
+    <h1 class="page-title">Grade Calculator</h1>
+    <p class="muted small-text">Total = 0.3 × RegMid + 0.3 × RegEnd + 0.4 × Final. Grades stay only in this browser.</p>
+
+    <div id="subjects"></div>
+
+    <div class="btn-row calc-actions">
+      <button type="button" id="add-subject" class="btn primary">Add subject</button>
+      <button type="button" id="clear-all" class="btn danger">Clear all</button>
+    </div>
+
+    <div class="card calc-legend small-text">
+      <h2>Rules</h2>
+      <ul>
+        <li>RegMid or RegEnd below 50: no admission to the final exam.</li>
+        <li>Total 70 or more: scholarship kept.</li>
+        <li>Total 50 to 69.99: passed, no scholarship.</li>
+        <li>Total below 50: retake in the summer semester.</li>
+      </ul>
+    </div>
+  </main>
+
+  <!-- One subject card. Cloned by js/calc.js for every subject. -->
+  <template id="subject-tpl">
+    <section class="card calc-subject">
+      <div class="calc-head">
+        <input class="calc-name" type="text" maxlength="60" placeholder="Subject name" aria-label="Subject name">
+        <button type="button" class="btn small ghost danger" data-remove>Remove</button>
+      </div>
+      <div class="calc-fields">
+        <label>RegMid
+          <input data-field="mid" type="text" inputmode="decimal" autocomplete="off" placeholder="0-100">
+        </label>
+        <label>RegEnd
+          <input data-field="end" type="text" inputmode="decimal" autocomplete="off" placeholder="0-100">
+        </label>
+        <label>Final
+          <input data-field="final" type="text" inputmode="decimal" autocomplete="off" placeholder="optional">
+        </label>
+      </div>
+      <p class="calc-error" role="alert" hidden></p>
+      <div class="calc-result" aria-live="polite"></div>
+    </section>
+  </template>
+</body>
+</html>

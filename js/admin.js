@@ -388,6 +388,26 @@ function setupPoints() {
 }
 
 // ---------- Daily Word answers ----------
+// Split text into words. Letters split by spaces or new lines (e.g. copied
+// from a tile grid: "T O U C H") are joined back into 5-letter words.
+function parseWords(text) {
+  const parts = text.toLowerCase().split(/[^a-z]+/).filter(Boolean);
+  const words = [];
+  let letters = '';
+  const flush = () => {
+    if (letters.length % 5 === 0) words.push(...(letters.match(/.{5}/g) || []));
+    else words.push(letters);
+    letters = '';
+  };
+  for (const p of parts) {
+    if (p.length === 1) { letters += p; continue; }
+    if (letters) flush();
+    words.push(p);
+  }
+  if (letters) flush();
+  return words;
+}
+
 function setupWord() {
   const form = document.getElementById('word-form');
   const list = document.getElementById('word-list');
@@ -412,7 +432,7 @@ function setupWord() {
 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    const words = form.words.value.toLowerCase().split(/[\s,;]+/).filter(Boolean);
+    const words = parseWords(form.words.value);
     if (!words.length) return toast('Enter some words.');
     await busy(form.querySelector('button[type=submit]'), async () => {
       const { data, error } = await sb.rpc('admin_add_answers', { p_words: words });
