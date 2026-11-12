@@ -11,6 +11,7 @@ chat.html             group chat
 profile.html          profile (?u=username)
 trade.html            buy / sell queue places for points
 game.html             Daily Word game + weekly ranking
+calc.html             grade calculator (Total = 0.3 RegMid + 0.3 RegEnd + 0.4 Final), saved only in the browser
 admin.html            admin: queue, subjects, users, auto-join, points, Daily Word, settings
 login.html            log in + "Forgot password?"
 register.html         register (needs group code)

@@ -52,7 +52,8 @@ Build a defense-queue website for my university study group.
 - login.html, register.html, index.html (queue), admin.html. Or one page with views — your choice, keep it simple.
 
 ## Extra features (added later, see README for setup)
-- Pages: chat.html, profile.html, trade.html, game.html, reset-password.html, verify-email.html.
+- Pages: chat.html, profile.html, trade.html, game.html, calc.html, reset-password.html, verify-email.html.
+- Grade calculator (calc.html, js/calc.js): browser only, no database; subjects saved in localStorage.
 - Shared header/menu is rendered by `initPage()` in js/common.js (dropdown under "Menu" on narrow screens).
 - Auto-join (admin): `auto_join_rules`, `auto_join_log`, `run_auto_join(p_force)`, cron `auto-join` every minute, each slot tried once (log), Run now = force.
 - Subjects: `open_days_before` (0–7) + `open_time` = when the queue opens (`join_is_open()` in the join RLS policy); `valid_from` / `valid_until` = which weeks a subject is used (`admin_end_subject`, `admin_change_subject_next_week`, cron `subjects-cleanup`). Never delete a running subject when the schedule changes: end it after this week.

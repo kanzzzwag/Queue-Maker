@@ -218,6 +218,7 @@ const NAV = [
   ['chat', 'chat.html', 'Chat'],
   ['trade', 'trade.html', 'Trade'],
   ['game', 'game.html', 'Daily Word'],
+  ['calc', 'calc.html', 'Calculator'],
   ['profile', 'profile.html', 'Profile'],
   ['admin', 'admin.html', 'Admin'],
 ];
